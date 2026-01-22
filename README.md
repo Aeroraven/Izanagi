@@ -4,6 +4,7 @@ A collection of small OS/DirectX/DLL experiments. Each experiment lives in its o
 
 ## Current experiments
 - D3D11TriangleHelloWorld — renders a basic triangle with DirectX 11 (C++/CMake).
+- D3D11Hooking — local D3D11 proxy + helper DLL for logging and shader bytecode dumps.
 - D3D12TriangleHelloWorld — renders a basic triangle with DirectX 12 (C++/CMake).
 - D3D12Hooking — local D3D12 proxy + helper DLL to load RenderDoc for frame capture.
 
@@ -18,6 +19,14 @@ cmake -S D3D11TriangleHelloWorld -B build/D3D11TriangleHelloWorld -G "Visual Stu
 cmake --build build/D3D11TriangleHelloWorld --config Release
 ```
 Run the executable from the build output directory so it can load `shaders.hlsl` beside the binary.
+
+## Build D3D11Hooking
+```powershell
+cmake -S D3D11Hooking -B build/D3D11Hooking -G "Visual Studio 17 2022" -A x64
+cmake --build build/D3D11Hooking --config Release
+```
+Copy `build/D3D11Hooking/Release/d3d11.dll` and `build/D3D11Hooking/Release/helper.dll` next to
+`D3D11TriangleHelloWorld` to enable the hook.
 
 ## Build the DirectX 12 sample
 ```powershell
