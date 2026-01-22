@@ -1,0 +1,3 @@
+LIBRARY test
+EXPORTS
+    Foo=d3d12_real.D3D12CoreCreateLayeredDevice @103
