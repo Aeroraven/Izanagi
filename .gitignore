@@ -1,0 +1,64 @@
+﻿# Build system
+/build/
+/DirectX12TriangleHelloWorld/build/
+**/build/
+/out/
+/bin/
+/lib/
+/CMakeFiles/
+**/CMakeFiles/
+CMakeCache.txt
+**/CMakeCache.txt
+cmake-build-*/
+
+# C++
+*.obj
+*.pch
+*.pdb
+*.lib
+*.dll
+*.exp
+*.ilk
+*.log
+*.sln
+*.vcxproj*
+*.vcproj*
+*.opensdf
+*.sdf
+ipch/
+*.user
+*.rsuser
+
+# C#
+bin/
+obj/
+*.userprefs
+*.pidb
+*.svclog
+TestResult*/
+*.ncrunch*
+_ReSharper*/
+*.DotSettings.user
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.env
+.build/
+dist/
+.coverage
+.pytest_cache/
+.mypy_cache/
+
+# Editors/OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
