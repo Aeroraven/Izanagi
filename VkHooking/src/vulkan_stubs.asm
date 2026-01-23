@@ -1,7 +1,5 @@
 OPTION CASEMAP:NONE
 
-EXTERN g_vkAcquireNextImage2KHR:QWORD
-EXTERN g_vkAcquireNextImageKHR:QWORD
 EXTERN g_vkAllocateCommandBuffers:QWORD
 EXTERN g_vkAllocateDescriptorSets:QWORD
 EXTERN g_vkAllocateMemory:QWORD
@@ -156,7 +154,6 @@ EXTERN g_vkEndCommandBuffer:QWORD
 EXTERN g_vkEnumerateDeviceExtensionProperties:QWORD
 EXTERN g_vkEnumerateDeviceLayerProperties:QWORD
 EXTERN g_vkEnumeratePhysicalDeviceGroups:QWORD
-EXTERN g_vkEnumeratePhysicalDevices:QWORD
 EXTERN g_vkFlushMappedMemoryRanges:QWORD
 EXTERN g_vkFreeCommandBuffers:QWORD
 EXTERN g_vkFreeDescriptorSets:QWORD
@@ -232,7 +229,6 @@ EXTERN g_vkMapMemory:QWORD
 EXTERN g_vkMapMemory2:QWORD
 EXTERN g_vkMergePipelineCaches:QWORD
 EXTERN g_vkQueueBindSparse:QWORD
-EXTERN g_vkQueuePresentKHR:QWORD
 EXTERN g_vkQueueSubmit:QWORD
 EXTERN g_vkQueueSubmit2:QWORD
 EXTERN g_vkQueueWaitIdle:QWORD
@@ -256,38 +252,6 @@ EXTERN g_vkWaitSemaphores:QWORD
 EXTERN EnsureExportsLoadedForStubs:PROC
 
 .code
-
-vkAcquireNextImage2KHR PROC
-    push rcx
-    push rdx
-    push r8
-    push r9
-    sub rsp, 28h
-    call EnsureExportsLoadedForStubs
-    add rsp, 28h
-    pop r9
-    pop r8
-    pop rdx
-    pop rcx
-    mov rax, qword ptr [g_vkAcquireNextImage2KHR]
-    jmp rax
-vkAcquireNextImage2KHR ENDP
-
-vkAcquireNextImageKHR PROC
-    push rcx
-    push rdx
-    push r8
-    push r9
-    sub rsp, 28h
-    call EnsureExportsLoadedForStubs
-    add rsp, 28h
-    pop r9
-    pop r8
-    pop rdx
-    pop rcx
-    mov rax, qword ptr [g_vkAcquireNextImageKHR]
-    jmp rax
-vkAcquireNextImageKHR ENDP
 
 vkAllocateCommandBuffers PROC
     push rcx
@@ -2753,22 +2717,6 @@ vkEnumeratePhysicalDeviceGroups PROC
     jmp rax
 vkEnumeratePhysicalDeviceGroups ENDP
 
-vkEnumeratePhysicalDevices PROC
-    push rcx
-    push rdx
-    push r8
-    push r9
-    sub rsp, 28h
-    call EnsureExportsLoadedForStubs
-    add rsp, 28h
-    pop r9
-    pop r8
-    pop rdx
-    pop rcx
-    mov rax, qword ptr [g_vkEnumeratePhysicalDevices]
-    jmp rax
-vkEnumeratePhysicalDevices ENDP
-
 vkFlushMappedMemoryRanges PROC
     push rcx
     push rdx
@@ -3968,22 +3916,6 @@ vkQueueBindSparse PROC
     mov rax, qword ptr [g_vkQueueBindSparse]
     jmp rax
 vkQueueBindSparse ENDP
-
-vkQueuePresentKHR PROC
-    push rcx
-    push rdx
-    push r8
-    push r9
-    sub rsp, 28h
-    call EnsureExportsLoadedForStubs
-    add rsp, 28h
-    pop r9
-    pop r8
-    pop rdx
-    pop rcx
-    mov rax, qword ptr [g_vkQueuePresentKHR]
-    jmp rax
-vkQueuePresentKHR ENDP
 
 vkQueueSubmit PROC
     push rcx

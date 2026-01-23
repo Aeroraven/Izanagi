@@ -12,7 +12,13 @@
 
 extern "C" void __stdcall HelperInitialize();
 extern "C" void __stdcall HelperLog(const char *message);
+extern "C" void __stdcall HelperLogApi(const char *api, const char *message);
 extern "C" void __stdcall HelperSaveShaderIR(const void *data, size_t size);
+extern "C" void __stdcall HelperAdvanceFrame();
+extern "C" void __stdcall HelperLogCallstack(const char *api,
+                                             const char *message);
+extern "C" void __stdcall HelperStartConsole();
+extern "C" void __stdcall HelperOnFrameStart();
 
 #define X(name) extern "C" void *g_##name = nullptr;
 #include "vulkan_stub_exports.inc"
@@ -32,6 +38,9 @@ extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceLayer
     uint32_t *pPropertyCount, VkLayerProperties *pProperties);
 extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceVersion(
     uint32_t *pApiVersion);
+extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumeratePhysicalDevices(
+    VkInstance instance, uint32_t *pPhysicalDeviceCount,
+    VkPhysicalDevice *pPhysicalDevices);
 extern "C" VKHOOK_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(
     VkInstance instance, const char *pName);
 extern "C" VKHOOK_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(
@@ -42,6 +51,12 @@ extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
 extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
     VkDevice device, const VkSwapchainCreateInfoKHR *pCreateInfo,
     const VkAllocationCallbacks *pAllocator, VkSwapchainKHR *pSwapchain);
+extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
+    VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout,
+    VkSemaphore semaphore, VkFence fence, uint32_t *pImageIndex);
+extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImage2KHR(
+    VkDevice device, const VkAcquireNextImageInfoKHR *pAcquireInfo,
+    uint32_t *pImageIndex);
 extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateGraphicsPipelines(
     VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
     const VkGraphicsPipelineCreateInfo *pCreateInfos,
@@ -56,6 +71,8 @@ extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateShaderModule(
 extern "C" VKHOOK_EXPORT VKAPI_ATTR void VKAPI_CALL vkDestroyShaderModule(
     VkDevice device, VkShaderModule shaderModule,
     const VkAllocationCallbacks *pAllocator);
+extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkQueuePresentKHR(
+    VkQueue queue, const VkPresentInfoKHR *pPresentInfo);
 
 namespace {
 HMODULE g_realVulkan = nullptr;
@@ -140,7 +157,7 @@ PFN_vkVoidFunction GetRealDeviceProc(VkDevice device, const char *name) {
   return g_realGetDeviceProcAddr(device, name);
 }
 
-void LogFormat(const char *fmt, ...) {
+void LogApiFormat(const char *api, const char *fmt, ...) {
   if (!fmt) {
     return;
   }
@@ -149,7 +166,7 @@ void LogFormat(const char *fmt, ...) {
   va_start(args, fmt);
   vsnprintf_s(buffer, sizeof(buffer), _TRUNCATE, fmt, args);
   va_end(args);
-  HelperLog(buffer);
+  HelperLogApi(api, buffer);
 }
 
 PFN_vkVoidFunction GetLocalProc(const char *name) {
@@ -174,7 +191,7 @@ extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
   if (result == VK_SUCCESS && pInstance) {
     g_lastInstance = *pInstance;
   }
-  LogFormat("vkCreateInstance result=%d", static_cast<int>(result));
+  LogApiFormat("vkCreateInstance", "result=%d", static_cast<int>(result));
   return result;
 }
 
@@ -203,6 +220,19 @@ vkEnumerateInstanceVersion(uint32_t *pApiVersion) {
   return fn ? fn(pApiVersion) : VK_ERROR_INITIALIZATION_FAILED;
 }
 
+extern "C" VKHOOK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumeratePhysicalDevices(VkInstance instance, uint32_t *pPhysicalDeviceCount,
+                           VkPhysicalDevice *pPhysicalDevices) {
+  HelperLogCallstack("vkEnumeratePhysicalDevices", "call");
+  auto fn = reinterpret_cast<PFN_vkEnumeratePhysicalDevices>(
+      GetRealInstanceProc(instance, "vkEnumeratePhysicalDevices"));
+  if (!fn) {
+    fn = GetRealProc<PFN_vkEnumeratePhysicalDevices>("vkEnumeratePhysicalDevices");
+  }
+  return fn ? fn(instance, pPhysicalDeviceCount, pPhysicalDevices)
+            : VK_ERROR_INITIALIZATION_FAILED;
+}
+
 extern "C" VKHOOK_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vkGetInstanceProcAddr(VkInstance instance, const char *pName) {
   HelperInitialize();
@@ -228,7 +258,7 @@ vkGetDeviceProcAddr(VkDevice device, const char *pName) {
 extern "C" VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
     VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo,
     const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
-  HelperInitialize();
+  HelperLogCallstack("vkCreateDevice", "call");
   auto fn = reinterpret_cast<PFN_vkCreateDevice>(
       GetRealInstanceProc(g_lastInstance, "vkCreateDevice"));
   if (!fn) {
@@ -238,8 +268,11 @@ extern "C" VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
       fn ? fn(physicalDevice, pCreateInfo, pAllocator, pDevice)
          : VK_ERROR_INITIALIZATION_FAILED;
   const uint32_t queues = pCreateInfo ? pCreateInfo->queueCreateInfoCount : 0;
-  LogFormat("vkCreateDevice result=%d queues=%u", static_cast<int>(result),
-            static_cast<unsigned>(queues));
+  LogApiFormat("vkCreateDevice", "result=%d queues=%u",
+               static_cast<int>(result), static_cast<unsigned>(queues));
+  if (result == VK_SUCCESS) {
+    HelperStartConsole();
+  }
   return result;
 }
 
@@ -253,16 +286,36 @@ extern "C" VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
       fn ? fn(device, pCreateInfo, pAllocator, pSwapchain)
          : VK_ERROR_INITIALIZATION_FAILED;
   if (pCreateInfo) {
-    LogFormat("vkCreateSwapchainKHR result=%d %ux%u format=%u images=%u",
-              static_cast<int>(result),
-              static_cast<unsigned>(pCreateInfo->imageExtent.width),
-              static_cast<unsigned>(pCreateInfo->imageExtent.height),
-              static_cast<unsigned>(pCreateInfo->imageFormat),
-              static_cast<unsigned>(pCreateInfo->minImageCount));
+    LogApiFormat("vkCreateSwapchainKHR", "result=%d %ux%u format=%u images=%u",
+                 static_cast<int>(result),
+                 static_cast<unsigned>(pCreateInfo->imageExtent.width),
+                 static_cast<unsigned>(pCreateInfo->imageExtent.height),
+                 static_cast<unsigned>(pCreateInfo->imageFormat),
+                 static_cast<unsigned>(pCreateInfo->minImageCount));
   } else {
-    LogFormat("vkCreateSwapchainKHR result=%d", static_cast<int>(result));
+    LogApiFormat("vkCreateSwapchainKHR", "result=%d", static_cast<int>(result));
   }
   return result;
+}
+
+extern "C" VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
+    VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout,
+    VkSemaphore semaphore, VkFence fence, uint32_t *pImageIndex) {
+  HelperOnFrameStart();
+  auto fn = reinterpret_cast<PFN_vkAcquireNextImageKHR>(
+      GetRealDeviceProc(device, "vkAcquireNextImageKHR"));
+  return fn ? fn(device, swapchain, timeout, semaphore, fence, pImageIndex)
+            : VK_ERROR_INITIALIZATION_FAILED;
+}
+
+extern "C" VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImage2KHR(
+    VkDevice device, const VkAcquireNextImageInfoKHR *pAcquireInfo,
+    uint32_t *pImageIndex) {
+  HelperOnFrameStart();
+  auto fn = reinterpret_cast<PFN_vkAcquireNextImage2KHR>(
+      GetRealDeviceProc(device, "vkAcquireNextImage2KHR"));
+  return fn ? fn(device, pAcquireInfo, pImageIndex)
+            : VK_ERROR_INITIALIZATION_FAILED;
 }
 
 extern "C" VKAPI_ATTR VkResult VKAPI_CALL vkCreateGraphicsPipelines(
@@ -276,9 +329,9 @@ extern "C" VKAPI_ATTR VkResult VKAPI_CALL vkCreateGraphicsPipelines(
       fn ? fn(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator,
               pPipelines)
          : VK_ERROR_INITIALIZATION_FAILED;
-  LogFormat("vkCreateGraphicsPipelines result=%d count=%u",
-            static_cast<int>(result),
-            static_cast<unsigned>(createInfoCount));
+  LogApiFormat("vkCreateGraphicsPipelines", "result=%d count=%u",
+               static_cast<int>(result),
+               static_cast<unsigned>(createInfoCount));
   return result;
 }
 
@@ -293,9 +346,9 @@ extern "C" VKAPI_ATTR VkResult VKAPI_CALL vkCreateComputePipelines(
       fn ? fn(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator,
               pPipelines)
          : VK_ERROR_INITIALIZATION_FAILED;
-  LogFormat("vkCreateComputePipelines result=%d count=%u",
-            static_cast<int>(result),
-            static_cast<unsigned>(createInfoCount));
+  LogApiFormat("vkCreateComputePipelines", "result=%d count=%u",
+               static_cast<int>(result),
+               static_cast<unsigned>(createInfoCount));
   return result;
 }
 
@@ -323,6 +376,17 @@ extern "C" VKAPI_ATTR void VKAPI_CALL vkDestroyShaderModule(
   if (fn) {
     fn(device, shaderModule, pAllocator);
   }
+}
+
+extern "C" VKAPI_ATTR VkResult VKAPI_CALL vkQueuePresentKHR(
+    VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
+  auto fn = GetRealProc<PFN_vkQueuePresentKHR>("vkQueuePresentKHR");
+  const VkResult result =
+      fn ? fn(queue, pPresentInfo) : VK_ERROR_INITIALIZATION_FAILED;
+  if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
+    HelperAdvanceFrame();
+  }
+  return result;
 }
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID) {

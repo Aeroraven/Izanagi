@@ -13,6 +13,7 @@ add_library(helper_vulkan SHARED
 
 target_compile_definitions(helper_vulkan PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_include_directories(helper_vulkan PRIVATE ${Vulkan_INCLUDE_DIRS})
+target_link_libraries(helper_vulkan PRIVATE dbghelp)
 set_target_properties(helper_vulkan PROPERTIES OUTPUT_NAME "helper-vulkan")
 
 add_library(vulkan_proxy SHARED
