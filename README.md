@@ -7,6 +7,7 @@ A collection of small OS/DirectX/DLL experiments. Each experiment lives in its o
 - D3D11Hooking — local D3D11 proxy + helper DLL for logging and shader bytecode dumps.
 - D3D12TriangleHelloWorld — renders a basic triangle with DirectX 12 (C++/CMake).
 - D3D12Hooking — local D3D12 proxy + helper DLL to load RenderDoc for frame capture.
+- VkHooking — local Vulkan proxy + helper DLL for logging and shader IR dumps.
 - VkTriangleHelloWorld — renders a basic triangle with Vulkan (C++/CMake).
 
 ## Prerequisites (Windows)
@@ -43,5 +44,14 @@ cmake -S VkTriangleHelloWorld -B build/VkTriangleHelloWorld -G "Visual Studio 17
 cmake --build build/VkTriangleHelloWorld --config Release
 ```
 Run the executable from the build output directory so it can load the compiled `.spv` shaders beside the binary.
+
+## Build VkHooking
+```powershell
+cmake -S VkHooking -B build/VkHooking -G "Visual Studio 17 2022" -A x64
+cmake --build build/VkHooking --config Release
+```
+Copy `build/VkHooking/Release/vulkan-1.dll` and
+`build/VkHooking/Release/helper-vulkan.dll` next to `VkTriangleHelloWorld.exe`
+to enable the hook.
 
 See `AGENTS.md` for contribution guidelines.
