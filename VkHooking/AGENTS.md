@@ -1,9 +1,29 @@
-实现`VkHooking`子项目：在 **VkTriangleHelloWorld** 运行时，加载项目内修改过的 `vulkan-1.dll`，实现一些调试功能。
-实现一个`vulkan-1.dll`和`helper-vulkan.dll`，其中`vulkan-1.dll`转发请求到相应的系统vulkan-1.dll中，`helper-vulkan.dll`用于实现一些hook的功能。
+﻿## VkHooking 当前功能/状态
 
-功能要求如下：
-1. 在vulkan启动时，在用户的文档目录的Izanagi_Log目录下新建`{date}-{time}-vkhook`目录，其下包含`log`。
-   1. 创建设备和创建Swapchain等函数需要输出到log下
-   2. 创建Pipeline也输出到log下
-2. 在创建Shader时，保存相应的shader ir到`{date}-{time}-vkhook\{id}.ps/vs/cs`。
-3. 注意转发所有GetProc/GetxxxAddr之类的函数，返回的函数指针应该是项目内的`vulkan-1`而不是系统的`vulkan-1`，但不要陷入死循环
+### 目标
+在 **VkTriangleHelloWorld** 运行时加载项目内 `vulkan-1.dll`，通过 `helper-vulkan.dll`
+实现调试日志、shader IR dump、调用栈等功能，并将所有 Vulkan 导出转发到系统
+`vulkan-1.dll`。
+
+### 已实现功能
+1. **完整导出转发**
+   - 从系统 `vulkan-1.dll` 自动生成导出列表（.def）和 stub（MASM），所有导出都会转发到系统 DLL。
+   - `vkGetInstanceProcAddr/vkGetDeviceProcAddr` 优先返回本地导出地址，避免回到系统 DLL 导致 hook 失效。
+2. **日志与目录**
+   - 在 `%USERPROFILE%\Documents\Izanagi_Logs\{YYYYMMDD-HHMMSS}-vkhook\log` 创建日志目录。
+   - 日志格式：`[HH:MM:SS.mmm][frameId][API]: message`。
+   - 输出：`vkCreateInstance/vkCreateDevice/vkCreateSwapchainKHR/vkCreateGraphicsPipelines/vkCreateComputePipelines` 等。
+3. **Shader IR 保存**
+   - 在 `vkCreateShaderModule` 保存 SPIR-V 到 `{id}.vs/.ps/.cs`（自动解析 stage）。
+4. **调用栈**
+   - 在 `vkEnumeratePhysicalDevices` 与 `vkCreateDevice` 时记录调用栈。
+5. **控制台输入**
+   - `vkCreateDevice` 成功后启动非阻塞控制台线程。
+   - 控制台输入 `c` 回车后，**下一帧开始**会写入一条日志（在 `vkAcquireNextImageKHR/2KHR` 触发帧开始）。
+
+### 当前构建说明
+- CMake 目标：`helper-vulkan.dll` + `vulkan-1.dll`（MASM stubs + /DEF 导出）。
+- 需要 `dbghelp.lib` 用于调用栈。
+
+### 运行/使用
+将 `vulkan-1.dll` 与 `helper-vulkan.dll` 放在 `VkTriangleHelloWorld.exe` 旁边运行。
